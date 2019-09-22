@@ -21,7 +21,7 @@ void wordF(){ // 计算字符出现的频率
 	for(int i = 0; i < 26; i++) ans[i] = double(res[i]) / sum;
 }
 
-void scan_F(){
+void print_F(){
 	bool flag[26]; // 当前字符是否出现过
 	memset(flag, false, sizeof flag);
 	printf("字符\t出现次数\t频率\n");
@@ -45,7 +45,7 @@ int main(){
 	freopen("第0步out.txt", "w", stdout); // 结果打印到文件——第0步out.txt 中
 	while(getline(inf, s)) cotChar(s); // 单行读入进行操作
 	wordF();
-	scan_F();
+	print_F();
 	inf.close();
 	return 0;
 }
