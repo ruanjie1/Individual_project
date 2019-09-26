@@ -10,8 +10,8 @@
 #define ll long long
 using namespace std;
 map<string, int> cotword;// 统计单词出现的次数
-vector<string> word;// 统计单词是否出现
 vector<string> filenames; // 记录目录下文件名
+map<string, int> stopword; // 停词表
 
 struct cmp{// 优先队列重载 < ，首选出现的次数排序，次选字典序
 	string words;
@@ -21,7 +21,7 @@ struct cmp{// 优先队列重载 < ，首选出现的次数排序，次选字典序
 		return a.cot < b.cot;
 	}
 };
-
+ll ans = 0;
 priority_queue<cmp> que;
 
 /*
@@ -61,18 +61,15 @@ void getAllFiles_childCatalogue(string path, vector<string>& files){ // 递归遍历
     }
 }
 
-void solve(string s){ // 处理单词
+void add_words(string s, int f){ // 处理单词
 	for(int i = 0; i < s.size(); i++){// 将单词大写统一变成小写
 		if(s[i] >= 'A' && s[i] <= 'Z'){
 			s[i] += 'a'- 'A';
 		}
 	}
-	auto t = cotword.find(s);
-	if(t == cotword.end()){// map中没有单词，将单词加入vector中，方便统计
-		cotword[s] = 1;
-		word.push_back(s);
-	}
-	else cotword[s]++;// map中有该单词，直接向上计数
+	if(f) cotword[s]++;
+	else stopword[s]++;
+	ans++;
 }
 
 bool isWord(string s){// 判断是否为单词
@@ -83,21 +80,22 @@ bool isWord(string s){// 判断是否为单词
 	return true;
 }
 
-void cotChar(string s){ // 统计单词出现次数
+void cotChar(string s, int f){ // 统计单词出现次数
 	string a;
 	for(int i = 0; i < s.size(); i++){
 		if(!((s[i]>='0'&&s[i]<='9')||(s[i]>='a'&&s[i]<='z')||(s[i]>='A'&&s[i]<='Z'))){// 断开string，取单个单词
-			if(isWord(a)) solve(a);
+			if(isWord(a)) add_words(a, f);
 			a.clear();// 用完之后，清空a，方便下一次统计
 		}
 		else a.push_back(s[i]);
 	}
-	if(a.size()) solve(a); // 末尾单词处理
+	if(a.size()) add_words(a, f); // 末尾单词处理
 }
 
 void wordF(){ // 将单词加入优先队列中，自动排序
-	for(int i = 0; i < word.size(); i++){
-		que.push({word[i], cotword[word[i]]});
+	for(auto i = cotword.begin(); i != cotword.end(); i++){
+		if(stopword.find(i->first) == stopword.end())
+			que.push({i->first, i->second});
 	}
 }
 
@@ -107,65 +105,84 @@ void print_F(int n){ // 输出单词
 	while(!que.empty() && i < n){
 		auto p = que.top(); que.pop();
 		cout << ++i << "\t" << p.cot << '\t'<< p.words << endl;
-//		cout << p.words << " ";
 	}
 }
 
-void solve_f(char *args[], int op){ // 对-f命令行参数进行处理
+void solve_x(int op, char *args[]){// 对-x命令行参数进行处理
 	string s;
 	ifstream inf;
 	inf.open(args[op]);
-	while(getline(inf, s)) cotChar(s); // 单行读入进行操作
+	while(getline(inf, s)) cotChar(s, 0); // 单行读入进行操作
 	inf.close();
 }
 
-void solve_d(char *args[], int op){ // 对-d命令行参数进行处理
+void solve_f(int op, char *args[]){ // 对-f命令行参数进行处理
+	string s;
+	ifstream inf;
+	inf.open(args[op]);
+	while(getline(inf, s)) cotChar(s, 1); // 单行读入进行操作
+	inf.close();
+}
+
+void solve_d(int op, char *args[]){ // 对-d命令行参数进行处理
 	getAllFiles(args[op], filenames);
 	for(int i = 0; i < filenames.size(); i++){
 		string s;
 		ifstream inf;
 		inf.open(filenames[i]);
-		while(getline(inf, s)) cotChar(s); // 单行读入进行操作
+		while(getline(inf, s)) cotChar(s, 1); // 单行读入进行操作
 		inf.close();
 	}
 }
 
-void solve_d_s(char *args[], int op){ // 对-d -s 命令行参数进行处理
+void solve_d_s(int op, char *args[]){ // 对-d -s 命令行参数进行处理
 	getAllFiles_childCatalogue(args[op], filenames);
 	for(int i = 0; i < filenames.size(); i++){
 		string s;
 		ifstream inf;
 		inf.open(filenames[i]);
-		while(getline(inf, s)) cotChar(s); // 单行读入进行操作
+		while(getline(inf, s)) cotChar(s, 1); // 单行读入进行操作
 		inf.close();
 	}
 }
 
-int outWords(int op, int ops[], int ops_size, char *args[]){ // 处理是否输出限定单词数
-	for(int i = 0; i < ops_size; i++){
-		if(ops[i]){
-			if(op > ops[i] + 2 && !strcmp(args[++ops[i]], "-n"))
-				return atoi(args[++ops[i]]);// 存在,则返回查找到的值
-		}
-	}
+int outWords(int op, char *args[]){ // 处理是否输出限定单词数
+	if(!strcmp(args[op], "-n")) return atoi(args[op + 1]);
 	return que.size(); // 不存在，返回默认所有的单词数
+}
+
+bool judge_x_command(int ps, char *args[]){ // 判断是否是 -x 指令
+	return !strcmp(args[ps], "-x");
+}
+
+bool judge_f_command(int ps, char *args[]){ // 判断是否是 -f 指令
+	return !strcmp(args[ps], "-f");
+}
+
+bool judge_d_command(int ps, char *args[]){ // 判断是否是 -d 指令
+	return !strcmp(args[ps], "-d");
+}
+
+bool judge_d_s_command(int ps, char *args[]){ // 判断是否是 -d -s 指令
+	return !strcmp(args[ps], "-d") * !strcmp(args[ps + 1], "-s");
 }
 
 int main(int op, char *args[]){
 	freopen("step_one_out_NoRepetition.txt", "w", stdout); // 结果打印到文件
-	int ops[10]; // 操作数目，记录每一个操作进行到的位置
-	int res = 0;// 操作数下标
-	memset(ops, 0, sizeof ops);
-	if(op >= 3 && !strcmp(args[++ops[res]], "-f")) solve_f(args, ++ops[res]);// -f处理
-	else if(++res && op >=4 && !strcmp(args[++ops[res]], "-d") && !strcmp(args[++ops[res]], "-s"))//-d-s处理
-		solve_d_s(args, ++ops[res]);
-	else if(++res && op >=3 && !strcmp(args[++ops[res]], "-d"))//-d处理
-		solve_d(args, ++ops[res]);
+	int ps = 1; // args位置
+	if(ps + 1 < op && judge_x_command(ps, args)) solve_x(ps + 1, args), ps += 2; // 处理-x命令
+	
+	if(ps + 1 < op && judge_f_command(ps, args)) solve_f(ps + 1, args), ps += 2;// -f处理
+	else if(ps + 2 < op && judge_d_s_command(ps, args)) solve_d_s(ps + 2, args), ps += 3;// -d-s处理
+	else if(ps + 1 < op && judge_d_command(ps, args)) solve_d(ps + 1, args), ps += 2; //-d处理
 	else{
 		cout << "输入格式有误， 命令行参数格式：xxx.exe -f <file name>" << endl;
 		return -1;
 	}
 	wordF();
-	print_F(outWords(op, ops, res + 1, args));
+//	cout << ans << endl;
+	int outW = que.size();
+	if(ps + 1 < op) outW = outWords(ps, args);
+	print_F(outW), ps += 2;
 	return 0;
 }
