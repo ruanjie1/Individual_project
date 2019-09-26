@@ -1,0 +1,5 @@
+-n 和 输出单词数m加在输入的文件名或者文件目录后面：
+例如：
+wf.exe -f <file> -n m
+wf.exe -d <directory> -n m
+wf.exe -d -s  <directory> -n m
